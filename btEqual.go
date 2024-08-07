@@ -25,43 +25,38 @@ func Walk(t *tree.Tree, ch chan int) {
 	}
 }
 
+func Walking(t *tree.Tree, ch chan int) {
+	Walk(t, ch)
+	defer close(ch)
+}
+
 // Same determines whether the trees
 // t1 and t2 contain the same values.
 func Same(t1, t2 *tree.Tree) bool {
 	ch1 := make(chan int)
 	ch2 := make(chan int)
-	ch3 := make(chan int)
 
-	go Walk(t1, ch1)
-	go Walk(t2, ch2)
-
-	go func() {
-		for x := range ch1 {
-			ch3 <- x
-		}
-		close(ch3)
-	}()
+	go Walking(t1, ch1)
+	go Walking(t2, ch2)
 
 	for {
-		select {
-		case <-ch3:
+		v1, more1 := <-ch1
+		v2, more2 := <-ch2
+
+		if more1 != more2 || v1 != v2 {
+			return false
+		}
+
+		//return if channel closed
+		if !more1 {
 			return true
-		case y := <-ch2:
-			x := <-ch3
-			if x != y {
-				return false
-			}
-		default:
-			time.Sleep(1 * time.Millisecond)
 		}
 	}
-
-	return true
 }
 
 func main() {
 	t1 := tree.New(2)
-	t2 := tree.New(2)
+	t2 := tree.New(1)
 
 	fmt.Print(Same(t1, t2))
 
